@@ -1,0 +1,8 @@
+---
+- name: Setup Rabbitmq
+  hosts: all_group
+  user: ubuntu
+  roles:
+    - rabbitmq
+
+

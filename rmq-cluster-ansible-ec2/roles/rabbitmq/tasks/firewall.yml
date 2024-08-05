@@ -1,0 +1,22 @@
+---
+- name: Install UFW firewall
+  apt:
+    name: ufw
+    state: present
+    update_cache: true
+  become: true
+
+- name: Enable UFW firewall
+  command: ufw --force enable
+  become: true
+
+- name: Enable ports on the list
+  command: ufw allow {{ item.port }}
+  loop: "{{ port_list }}"
+  become: true
+ 
+- name: Reload UFW to apply rules
+  command: ufw reload
+  become: true
+
+

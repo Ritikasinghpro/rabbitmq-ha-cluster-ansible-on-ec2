@@ -1,0 +1,9 @@
+---
+port_list:
+  - { port: 5672/tcp, state: enabled }
+  - { port: 15672/tcp, state: enabled }
+  - { port: 4369/tcp, state: enabled }
+  - { port: 25672/tcp, state: enabled }
+  - { port: 22/tcp, state: enabled }
+rabbitmq_erlang_cookie_file: "/var/lib/rabbitmq/.erlang.cookie"
+ADMIN_PASS: "admin@123"

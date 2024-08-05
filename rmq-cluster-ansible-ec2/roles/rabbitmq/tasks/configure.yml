@@ -1,0 +1,129 @@
+---
+- name: Debug group names
+  debug:
+    var: group_names
+- name: Ensure RabbitMQ Management Plugin is Enabled
+  rabbitmq_plugin:
+    names: rabbitmq_management
+    state: enabled
+  become: true
+  notify:
+  - restart rabbitmq
+
+- name: Starting RabbitMQ App
+  command: rabbitmqctl start_app
+  become: true
+
+- name: Stopping RabbitMQ App
+  command: rabbitmqctl stop_app
+  become: true
+  when: "'rmq_nodes' in group_names"
+
+- name: Adding RabbitMQ Dashboard User
+  rabbitmq_user:
+    user: "{{ item }}"
+    password: "{{ ADMIN_PASS }}"
+    tags: administrator,{{ item }}
+    vhost: /
+    configure_priv: .*
+    write_priv: .*
+    read_priv: .*
+    state: present
+  with_items:
+    - admin
+  become: true
+  when: "'rmq_master' in group_names"
+
+- name: Capturing Erlang Cookie on Master
+  command: "cat {{ rabbitmq_erlang_cookie_file }}"
+  register: rabbitmq_erlang_cookie
+  when: "'rmq_master' in group_names"
+  become: true
+
+- name: Print Erlang Cookie value on Master
+  debug:
+    msg: "Erlang Cookie: {{ rabbitmq_erlang_cookie.stdout }}"
+  when: "'rmq_master' in group_names"
+  become: true
+
+- name: Set Erlang Cookie fact for all Nodes
+  set_fact:
+    rabbitmq_erlang_cookie: "{{ hostvars[groups['rmq_master'][0]]['rabbitmq_erlang_cookie']['stdout'] }}"
+  when: "'rmq_nodes' in group_names"
+  become: true
+
+- name: Copy Erlang cookie from fact to All Nodes
+  template:
+    src: files/erlang.cookie.j2
+    dest: "{{ rabbitmq_erlang_cookie_file }}"
+    owner: rabbitmq
+    group: rabbitmq
+    mode: '0400'
+    backup: yes
+  when: inventory_hostname != groups['rmq_master'][0]
+  become: true
+
+- name: restart rabbitmq
+  service: 
+    name: rabbitmq-server 
+    state: restarted
+  become: true
+
+
+- name: Start RabbitMQ application
+  command: rabbitmqctl start_app
+  register: start_app_result
+  when: inventory_hostname != groups['rmq_master'][0]
+  become: true
+
+- name: Debug RabbitMQ start result
+  debug:
+    msg: "RabbitMQ start result: {{ start_app_result.stdout }}"
+  when: inventory_hostname != groups['rmq_master'][0]
+  become: true
+
+- name: Stopping RabbitMQ App
+  command: rabbitmqctl stop_app
+  become: true
+  when: "'rmq_nodes' in group_names"
+
+
+- name: Debug master node IP
+  debug:
+    msg: "Master node IP: {{ hostvars[groups['rmq_master'][0]]['ansible_ssh_host'] }}"
+
+# - name: Join RabbitMQ Cluster
+#   command: rabbitmqctl join_cluster rabbit@ip-10-30-66-117
+#   become: true
+#   when: "'rmq_nodes' in group_names"
+
+- name: Join RabbitMQ Cluster
+  command: >
+    rabbitmqctl join_cluster rabbit@{{ hostvars[groups['rmq_master'][0]]['ansible_hostname'] }}
+  become: true
+  when: "'rmq_nodes' in group_names"
+  register: join_cluster_result
+
+
+- name: Debug RabbitMQ master hostname
+  debug:
+    msg: "rabbit@{{ hostvars[groups['rmq_master'][0]]['ansible_hostname'] }}"
+  when: "'rmq_nodes' in group_names"
+
+- name: Start RabbitMQ application on Node
+  command: rabbitmqctl start_app
+  when: "'rmq_nodes' in group_names"
+  become: true
+
+- name: Getting Cluster Status
+  command: rabbitmqctl cluster_status
+  become: true
+  
+
+- name: Set Policy for Queue Mirroring
+  command: rabbitmqctl set_policy ha-all "." '{"ha-mode":"all"}'
+  become: true
+
+
+
+

@@ -1,0 +1,26 @@
+
+[node1]
+rabbit-node1 ansible_ssh_host=10.33.222.44
+
+[node2]
+
+rabbit-node2 ansible_ssh_host=10.10.292.28
+
+
+[rmq_master]
+rabbit-node1
+
+[rmq_nodes]
+rabbit-node2
+
+[all_group]
+rabbit-node1
+rabbit-node2
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+ansible_ssh_user=ubuntu
+ansible_private_key_file=/var/lib/jenkins/.ssh/ansible_key
+ansible_ssh_extra_args='-o StrictHostKeyChecking=no'
+
+
